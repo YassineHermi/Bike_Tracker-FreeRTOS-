@@ -1,0 +1,6 @@
+../BSP/BLE/BLE.c:27:6:HM10_AT_command	16	static
+../BSP/BLE/BLE.c:42:6:connected	8	static
+../BSP/BLE/BLE.c:48:6:send_data	16	static
+../BSP/BLE/BLE.c:58:13:MX_USART1_UART_Init	8	static
+../BSP/BLE/BLE.c:90:13:BLE_State_Pin_Init	8	static
+../BSP/BLE/BLE.c:99:6:BLE_Init	8	static

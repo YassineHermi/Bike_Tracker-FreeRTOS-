@@ -6,6 +6,7 @@
 #include "string.h"
 #include "stdbool.h"
 #include "stm32l4xx_hal.h"
+#include "GPS.h"
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -21,6 +22,7 @@ char hex2inv[9];
 uint32_t min;
 uint32_t value;
 uint32_t value2;
+uint32_t hexa_value;
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -644,7 +646,7 @@ static void Write_Data(uint8_t *pData, int Size)
 	if (Est_Vide(ADDR,Size)==true)
 		{
 			a=true;
-			BSP_QSPI_Write(pData, ADDR, Size);
+			//BSP_QSPI_Write(pData, ADDR, Size);
 		}
 		else
 		{

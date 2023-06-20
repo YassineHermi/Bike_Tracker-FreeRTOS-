@@ -30,7 +30,8 @@ BSP/Flash Memory/Memory.o: ../BSP/Flash\ Memory/Memory.c \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_tim.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_tim_ex.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h \
- ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h
+ ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h \
+ D:/insat/PFE/Sofiatech/Test_freeRTOS/BSP/GPS/GPS.h
 ../BSP/Flash\ Memory/Memory.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h:
 ../Core/Inc/stm32l4xx_hal_conf.h:
@@ -63,3 +64,4 @@ BSP/Flash Memory/Memory.o: ../BSP/Flash\ Memory/Memory.c \
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_tim_ex.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h:
+D:/insat/PFE/Sofiatech/Test_freeRTOS/BSP/GPS/GPS.h:

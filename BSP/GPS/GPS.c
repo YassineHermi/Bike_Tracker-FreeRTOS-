@@ -35,10 +35,10 @@ char *x;
 int ind;
 char Data[64];
 Data_from_GPS mydata;
-
+int compteur=0;
 /* Private functions ----------------------------------------------------------*/
 
-static void Format_data(int Date,float Temps,float Latitude,float Longitude,float Vitesse,uint8_t buffer[13],uint8_t buff[13]);
+static void Format_data(int Date,float Temps,float Latitude,float Longitude,float Vitesse,uint8_t buffer[13],uint8_t buff[13], int * compteur_vit_null);
 static uint32_t Get_Epoch_Time(int jour,int mois,int annee,int heures,int minutes,int secondes);
 static void Inversion(uint8_t buffer[13], uint8_t buff[13]);
 static void USART2_UART_Init(void);
@@ -47,7 +47,7 @@ static void USART2_UART_Init(void);
 
 /* Exported Functions -----------------------------------------------------------------------------*/
 
-void Get_Data(uint8_t buffer[13],uint8_t buff[13])
+void Get_Data(uint8_t buffer[13],uint8_t buff[13], int  * compteur_vit_null)
 {
 
 	if (Flag != 0)
@@ -78,13 +78,14 @@ void Get_Data(uint8_t buffer[13],uint8_t buff[13])
 
           HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), 50);
 		  // Format des données
-		  Format_data(Date, Temps, Latitude, Longitude, Vitesse,buffer,buff);
+		  Format_data(Date, Temps, Latitude, Longitude, Vitesse,buffer,buff, compteur_vit_null);
 		  Flag=0;
 
 		}
 	  }
 	//return (uint8_t *)buff;
 }
+
 
 void GPS_Init(void)
 {
@@ -107,7 +108,7 @@ void GPS_Init(void)
 
 /* Private Functions --------------------------------------------------------------------------*/
 
-static void Format_data(int Date, float Temps, float Latitude, float Longitude, float Vitesse,uint8_t buffer[13],uint8_t buff[13])
+static void Format_data(int Date, float Temps, float Latitude, float Longitude, float Vitesse,uint8_t buffer[13],uint8_t buff[13],int * compteur_vit_null)
 {
 
   // Date  :  ddmmaa ==> dd/mm/aa
@@ -127,6 +128,16 @@ static void Format_data(int Date, float Temps, float Latitude, float Longitude, 
 
   // Vitesse :  vitesse en noeuds ==> vitesse en km/h
   Vitesse = Vitesse * 1.852;
+
+  if (Vitesse <= 5)
+	  (*compteur_vit_null)++;
+  else
+	  (*compteur_vit_null)=0;
+
+  if ((*compteur_vit_null) == 30)
+	  (*compteur_vit_null)=0;
+
+  //compteur_vit_null= compteur;
 
   // Latitude : ddmm.mmmm ==> dd + mm.mmmm/60
 

@@ -17,7 +17,6 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-
 #include "main.h"
 #include "cmsis_os.h"
 
@@ -68,6 +67,13 @@ const osThreadAttr_t BLE_Send_Data_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal7,
 };
+/* Definitions for Bike_state */
+osThreadId_t Bike_stateHandle;
+const osThreadAttr_t Bike_state_attributes = {
+  .name = "Bike_state",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal2,
+};
 /* Definitions for myQueue01 */
 osMessageQueueId_t myQueue01Handle;
 const osMessageQueueAttr_t myQueue01_attributes = {
@@ -83,17 +89,21 @@ osSemaphoreId_t Semaphore1Handle;
 const osSemaphoreAttr_t Semaphore1_attributes = {
   .name = "Semaphore1"
 };
-/* Definitions for semaphore2 */
+/* Definitions for Semaphore2 */
 osSemaphoreId_t Semaphore2Handle;
 const osSemaphoreAttr_t Semaphore2_attributes = {
-  .name = "semaphore2"
+  .name = "Semaphore2"
 };
 /* Definitions for Semaphore3 */
 osSemaphoreId_t Semaphore3Handle;
 const osSemaphoreAttr_t Semaphore3_attributes = {
   .name = "Semaphore3"
 };
-
+/* Definitions for Semaphore0 */
+osSemaphoreId_t Semaphore0Handle;
+const osSemaphoreAttr_t Semaphore0_attributes = {
+  .name = "Semaphore0"
+};
 /* USER CODE BEGIN PV */
 
 uint8_t GPS_Data[13];
@@ -102,16 +112,21 @@ int Data_size = 16;
 uint8_t buffer[13];
 uint8_t buffer2[13];
 uint8_t size;
+int bouton=0;
+int Temps_vit_null=0;
+uint8_t compt=0;
 
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void GPIO_Init(void);
+static void MX_GPIO_Init(void);
+
 void StartGPS_Get_Data(void *argument);
 void StartMem_Store_Data(void *argument);
 void StartBLE_Send_Data(void *argument);
+void StartBike_state(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -119,7 +134,20 @@ void StartBLE_Send_Data(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+  {
+  	if (GPIO_Pin == GPIO_PIN_2)
+  		{
+  		 if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == GPIO_PIN_SET)
+  		   bouton = 1;
+  		 else
+  		   bouton = 0;
 
+  		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU);
+  		}
+
+  		//compt++;
+  }
 
 /* USER CODE END 0 */
 
@@ -150,28 +178,43 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  GPIO_Init();
-  BLE_Init();
+  MX_GPIO_Init();
+
   /* USER CODE BEGIN 2 */
+  BLE_Init();
   GPS_Init();
   Memory_Init();
+
 
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
 
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
   /* Create the semaphores(s) */
   /* creation of Semaphore1 */
   Semaphore1Handle = osSemaphoreNew(1, 0, &Semaphore1_attributes);
 
-  /* creation of semaphore2 */
+  /* creation of Semaphore2 */
   Semaphore2Handle = osSemaphoreNew(1, 0, &Semaphore2_attributes);
 
   /* creation of Semaphore3 */
-  Semaphore3Handle = osSemaphoreNew(1, 1, &Semaphore3_attributes);
+  Semaphore3Handle = osSemaphoreNew(1, 0, &Semaphore3_attributes);
 
+  /* creation of Semaphore0 */
+  Semaphore0Handle = osSemaphoreNew(1, 1, &Semaphore0_attributes);
 
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
   /* creation of myQueue01 */
@@ -180,6 +223,9 @@ int main(void)
   /* creation of myQueue02 */
   myQueue02Handle = osMessageQueueNew (13, sizeof(uint8_t), &myQueue02_attributes);
 
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of GPS_Get_Data */
@@ -190,6 +236,17 @@ int main(void)
 
   /* creation of BLE_Send_Data */
   BLE_Send_DataHandle = osThreadNew(StartBLE_Send_Data, NULL, &BLE_Send_Data_attributes);
+
+  /* creation of Bike_state */
+  Bike_stateHandle = osThreadNew(StartBike_state, NULL, &Bike_state_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -232,7 +289,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 40;
+  RCC_OscInitStruct.PLL.PLLN = 30;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -246,23 +303,25 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
 }
+
 
 /**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
-static void GPIO_Init(void)
+static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
@@ -270,6 +329,16 @@ static void GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin : PA2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
 }
 
@@ -291,9 +360,13 @@ void StartGPS_Get_Data(void *argument)
   for(;;)
   {
 
-	  osSemaphoreAcquire(Semaphore3Handle, osWaitForever);
+	  osSemaphoreAcquire(Semaphore1Handle, osWaitForever);
 
-	  Get_Data(GPS_Data, BLE_Data);
+	  Get_Data(GPS_Data, BLE_Data,&Temps_vit_null);
+	 /* if (Temps_vit_null == 8)
+		  flg=1;
+	  else
+		  flg=0;*/
 	  for (int j=0;j<13;j++)
 
 		  {
@@ -301,7 +374,7 @@ void StartGPS_Get_Data(void *argument)
 		    osMessageQueuePut(myQueue02Handle, &(BLE_Data[j]), sizeof(BLE_Data[j]), 100);
 		  }
 
-	  osSemaphoreRelease(Semaphore1Handle);
+	  osSemaphoreRelease(Semaphore2Handle);
 
   }
   /* USER CODE END 5 */
@@ -320,7 +393,7 @@ void StartMem_Store_Data(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  osSemaphoreAcquire(Semaphore1Handle, osWaitForever);
+	  osSemaphoreAcquire(Semaphore2Handle, osWaitForever);
 
 	  for (int k=0;k<13;k++)
 
@@ -330,7 +403,7 @@ void StartMem_Store_Data(void *argument)
 
 	  Store_Data(buffer,Data_size);
 
-	  osSemaphoreRelease(Semaphore2Handle);
+	  osSemaphoreRelease(Semaphore3Handle);
   }
   /* USER CODE END StartMem_Store_Data */
 }
@@ -348,7 +421,7 @@ void StartBLE_Send_Data(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	      osSemaphoreAcquire(Semaphore2Handle, osWaitForever);
+	      osSemaphoreAcquire(Semaphore3Handle, osWaitForever);
 
 	      for (int l=0;l<13;l++)
 
@@ -358,9 +431,43 @@ void StartBLE_Send_Data(void *argument)
 
 	  	  send_data(buffer2);
 
-	  	  osSemaphoreRelease(Semaphore3Handle);
+	  	  osSemaphoreRelease(Semaphore0Handle);
   }
   /* USER CODE END StartBLE_Send_Data */
+}
+
+/* USER CODE BEGIN Header_StartBike_state */
+/**
+* @brief Function implementing the Bike_state thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartBike_state */
+void StartBike_state(void *argument)
+{
+  /* USER CODE BEGIN StartBike_state */
+  /* Infinite loop */
+  for(;;)
+  {
+	  osSemaphoreAcquire(Semaphore0Handle, osWaitForever);
+
+	  if ((bouton==0) && (Temps_vit_null>=27))
+		  {
+		      HAL_SuspendTick();
+		      HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN4);
+		      HAL_PWR_EnterSTANDBYMode();
+
+		  }
+	  else
+		  {
+              HAL_ResumeTick();
+              if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == GPIO_PIN_SET)
+               		   bouton = 1;
+		  }
+	  osSemaphoreRelease(Semaphore1Handle);
+
+  }
+  /* USER CODE END StartBike_state */
 }
 
 /**

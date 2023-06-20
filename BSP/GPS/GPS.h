@@ -20,7 +20,7 @@ typedef struct __attribute__((__packed__)) {
     char speed;                    //1 octet
 }Data_from_GPS;
 
-void Get_Data(uint8_t buffer[13],uint8_t buff[13]); // receive data from GPS module
+void Get_Data(uint8_t buffer[13],uint8_t buff[13],int  * compteur_vit_null); // receive data from GPS module
 void GPS_Init(void);                                // Initialise the module's UART (UART4)
 
 #endif

@@ -13,11 +13,12 @@
 #include "stdint.h"
 #include "time.h"
 #include "stm32l4xx_hal.h"
+#include "Memory.h"
 
 /* Private variables ---------------------------------------------------------*/
 
 UART_HandleTypeDef huart4;
-UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart2;
 
 /* Exported Variables -----------------------------------------------------------------------------*/
 
@@ -36,21 +37,23 @@ int ind;
 char Data[64];
 Data_from_GPS mydata;
 int compteur=0;
+int led1,led2,led3,led4,niv;
+
 /* Private functions ----------------------------------------------------------*/
 
-static void Format_data(int Date,float Temps,float Latitude,float Longitude,float Vitesse,uint8_t buffer[13],uint8_t buff[13], int * compteur_vit_null);
+static void Format_data(int Date,float Temps,float Latitude,float Longitude,float Vitesse,uint8_t buffer[14],uint8_t buff[14], int * compteur_vit_null);
 static uint32_t Get_Epoch_Time(int jour,int mois,int annee,int heures,int minutes,int secondes);
-static void Inversion(uint8_t buffer[13], uint8_t buff[13]);
-static void USART2_UART_Init(void);
+//static void Inversion(uint8_t buffer[13], uint8_t buff[13]);
+//static void USART2_UART_Init(void);
 
 
 
 /* Exported Functions -----------------------------------------------------------------------------*/
 
-void Get_Data(uint8_t buffer[13],uint8_t buff[13], int  * compteur_vit_null)
+void Get_Data(uint8_t buffer[14],uint8_t buff[14], int  * compteur_vit_null)
 {
 
-	if (Flag != 0)
+	if (Flag == 1)
 	  {
 
 		// Extraction de la ligne GPRMC
@@ -73,10 +76,10 @@ void Get_Data(uint8_t buffer[13],uint8_t buff[13], int  * compteur_vit_null)
 
 			Ligne_GPRMC[indice]= '\0';
 		  // Extraction de chaque information dans la ligne
-		  HAL_UART_Transmit(&huart2, (uint8_t*)Ligne_GPRMC, sizeof(Ligne_GPRMC), 100);
+		//  HAL_UART_Transmit(&huart2, (uint8_t*)Ligne_GPRMC, sizeof(Ligne_GPRMC), 100);
 		  sscanf(Ligne_GPRMC,"GGPRMC,%f,A,%f,N,%f,E,%f,,%d",&Temps,&Latitude,&Longitude,&Vitesse,&Date);
 
-          HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), 50);
+        //  HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), 50);
 		  // Format des données
 		  Format_data(Date, Temps, Latitude, Longitude, Vitesse,buffer,buff, compteur_vit_null);
 		  Flag=0;
@@ -102,13 +105,13 @@ void GPS_Init(void)
   huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart4);
 
-  USART2_UART_Init();
+  //USART2_UART_Init();
   HAL_UART_Receive_IT(&huart4, (uint8_t*)Rxdata,750);
 }
 
 /* Private Functions --------------------------------------------------------------------------*/
 
-static void Format_data(int Date, float Temps, float Latitude, float Longitude, float Vitesse,uint8_t buffer[13],uint8_t buff[13],int * compteur_vit_null)
+static void Format_data(int Date, float Temps, float Latitude, float Longitude, float Vitesse,uint8_t buffer[14],uint8_t buff[14],int * compteur_vit_null)
 {
 
   // Date  :  ddmmaa ==> dd/mm/aa
@@ -150,15 +153,34 @@ static void Format_data(int Date, float Temps, float Latitude, float Longitude, 
   Longitude = degre_long + ((Longitude- (degre_long*100))/60);
 
 
-	  Data_from_GPS mydata = {
-		  .epoch_time = Epoch_Time,
-	      .latitude = Latitude,
-		  .longitude= Longitude,
-		  .speed= Vitesse,
-	  };
+
+
+  Data_from_GPS mydata = {
+	 .epoch_time = Epoch_Time,
+	 .latitude = Latitude,
+	 .longitude= Longitude,
+     .speed= Vitesse,
+    // .history_indicator = '1',
+  };
 
 
   memcpy(buffer, &mydata, sizeof(mydata));
+
+  led1 = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_2);
+  	  led2 = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_8);
+  	  led3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3);
+  	  led4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+
+  	  if (led4==1)
+  		  niv=100;
+  	  else if ((led4==0)&&(led3==1))
+  		  niv=75;
+  	  else if ((led3==0)&&(led2==1))
+  		  niv=50;
+  	  else if ((led2==0)&&(led1==1))
+  		  niv=25;
+  	  else
+  		  niv=0;
   Inversion(buffer,buff);
   HAL_UART_Transmit_IT(&huart2, (uint8_t*)"==> Ready to store\r\n",22);
 
@@ -186,7 +208,7 @@ static uint32_t Get_Epoch_Time(int jour,int mois,int annee,int heures,int minute
 /**
  * la fonction ci-dessous a pour but d'inverser le contenu d'un buffer de la façon suivante : "abcdefghijklp" ==> "dcbahgfelkjip"
  */
-static void Inversion(uint8_t buffer[13],uint8_t buff[13])
+void Inversion(uint8_t buffer[14],uint8_t buff[14])
 {
 	int k =0;
 	  for (int i=0; i<=8; i=i+4)
@@ -199,12 +221,13 @@ static void Inversion(uint8_t buffer[13],uint8_t buff[13])
 	  }
 
 	  buff[12]=buffer[12];
+	  buff[13]= niv;
 }
 
 /**
  * la fonction ci-dessous permet d'initialiser l'usart2 de STLINK pour afficher des messages
  */
-static void USART2_UART_Init(void)
+/*static void USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
@@ -219,14 +242,24 @@ static void USART2_UART_Init(void)
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart2);
 
-}
+}*/
 
 /**
  * la fonction ci-dessous est appellé après la réception de chaque donnée du module GPS
  */
+/*void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef * huart)
+{
+
+	 Flag=1;
+     HAL_UART_Receive_DMA(&huart4, (uint8_t*)Rxdata,750);
+
+
+}*/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef * huart)
 {
-  Flag=1;
-  HAL_UART_Receive_IT(&huart4, (uint8_t*)Rxdata,750);
+
+	 Flag=1;
+     HAL_UART_Receive_IT(&huart4, (uint8_t*)Rxdata,750);
+
 
 }

@@ -53,10 +53,10 @@ const osThreadAttr_t GPS_Get_Data_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
-/* Definitions for Mem_Store_Data */
-osThreadId_t Mem_Store_DataHandle;
-const osThreadAttr_t Mem_Store_Data_attributes = {
-  .name = "Mem_Store_Data",
+/* Definitions for Mem_Access_Data */
+osThreadId_t Mem_Access_DataHandle;
+const osThreadAttr_t Mem_Access_Data_attributes = {
+  .name = "Mem_Access_Data",
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -84,6 +84,11 @@ osMessageQueueId_t myQueue02Handle;
 const osMessageQueueAttr_t myQueue02_attributes = {
   .name = "myQueue02"
 };
+/* Definitions for myQueue03 */
+osMessageQueueId_t myQueue03Handle;
+const osMessageQueueAttr_t myQueue03_attributes = {
+  .name = "myQueue03"
+};
 /* Definitions for Semaphore1 */
 osSemaphoreId_t Semaphore1Handle;
 const osSemaphoreAttr_t Semaphore1_attributes = {
@@ -106,15 +111,21 @@ const osSemaphoreAttr_t Semaphore0_attributes = {
 };
 /* USER CODE BEGIN PV */
 
-uint8_t GPS_Data[13];
-uint8_t BLE_Data[13];
+DMA_HandleTypeDef hdma_usart1_rx;
+uint8_t GPS_Data[14];
+uint8_t BLE_Data[14];
+uint8_t memory_data[14];
 int Data_size = 16;
-uint8_t buffer[13];
-uint8_t buffer2[13];
+uint8_t buffer_queue1[14];
+uint8_t buffer_queue2[14];
+uint8_t buffer_queue3[14];
 uint8_t size;
 int bouton=0;
 int Temps_vit_null=0;
 uint8_t compt=0;
+bool flg_hist=false;
+int history_flag=0;
+int End_History = 0;
 
 
 /* USER CODE END PV */
@@ -122,9 +133,9 @@ uint8_t compt=0;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-
+static void MX_DMA_Init(void);
 void StartGPS_Get_Data(void *argument);
-void StartMem_Store_Data(void *argument);
+void StartMem_Access_Data(void *argument);
 void StartBLE_Send_Data(void *argument);
 void StartBike_state(void *argument);
 
@@ -179,7 +190,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-
+  MX_DMA_Init();
   /* USER CODE BEGIN 2 */
   BLE_Init();
   GPS_Init();
@@ -218,10 +229,13 @@ int main(void)
 
   /* Create the queue(s) */
   /* creation of myQueue01 */
-  myQueue01Handle = osMessageQueueNew (13, sizeof(uint8_t), &myQueue01_attributes);
+  myQueue01Handle = osMessageQueueNew (14, sizeof(uint8_t), &myQueue01_attributes);
 
   /* creation of myQueue02 */
-  myQueue02Handle = osMessageQueueNew (13, sizeof(uint8_t), &myQueue02_attributes);
+  myQueue02Handle = osMessageQueueNew (14, sizeof(uint8_t), &myQueue02_attributes);
+
+  /* creation of myQueue03 */
+  myQueue03Handle = osMessageQueueNew (14, sizeof(uint8_t), &myQueue03_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -231,8 +245,8 @@ int main(void)
   /* creation of GPS_Get_Data */
   GPS_Get_DataHandle = osThreadNew(StartGPS_Get_Data, NULL, &GPS_Get_Data_attributes);
 
-  /* creation of Mem_Store_Data */
-  Mem_Store_DataHandle = osThreadNew(StartMem_Store_Data, NULL, &Mem_Store_Data_attributes);
+  /* creation of Mem_Access_Data */
+  Mem_Access_DataHandle = osThreadNew(StartMem_Access_Data, NULL, &Mem_Access_Data_attributes);
 
   /* creation of BLE_Send_Data */
   BLE_Send_DataHandle = osThreadNew(StartBLE_Send_Data, NULL, &BLE_Send_Data_attributes);
@@ -289,7 +303,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 30;
+  RCC_OscInitStruct.PLL.PLLN = 40;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -303,16 +317,32 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
     Error_Handler();
   }
 }
 
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+
+}
 
 /**
   * @brief GPIO Initialization Function
@@ -326,15 +356,33 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin : PA2 */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA3 PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PE8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
@@ -362,50 +410,71 @@ void StartGPS_Get_Data(void *argument)
 
 	  osSemaphoreAcquire(Semaphore1Handle, osWaitForever);
 
-	  Get_Data(GPS_Data, BLE_Data,&Temps_vit_null);
-	 /* if (Temps_vit_null == 8)
-		  flg=1;
-	  else
-		  flg=0;*/
-	  for (int j=0;j<13;j++)
+	  if (history_flag==0)
+	  {
 
-		  {
-		    osMessageQueuePut(myQueue01Handle, &(GPS_Data[j]), sizeof(GPS_Data[j]), 100);
-		    osMessageQueuePut(myQueue02Handle, &(BLE_Data[j]), sizeof(BLE_Data[j]), 100);
-		  }
+		  Get_Data(GPS_Data, BLE_Data,&Temps_vit_null);
 
+		  for (int j=0;j<14;j++)
+
+			  {
+				osMessageQueuePut(myQueue01Handle, &(GPS_Data[j]), sizeof(GPS_Data[j]), 100);
+				osMessageQueuePut(myQueue02Handle, &(BLE_Data[j]), sizeof(BLE_Data[j]), 100);
+			  }
+
+	  }
 	  osSemaphoreRelease(Semaphore2Handle);
 
   }
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartMem_Store_Data */
+/* USER CODE BEGIN Header_StartMem_Access_Data */
 /**
-* @brief Function implementing the Mem_Store_Data thread.
+* @brief Function implementing the Mem_Access_Data thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartMem_Store_Data */
-void StartMem_Store_Data(void *argument)
+/* USER CODE END Header_StartMem_Access_Data */
+void StartMem_Access_Data(void *argument)
 {
-  /* USER CODE BEGIN StartMem_Store_Data */
+  /* USER CODE BEGIN StartMem_Access_Data */
   /* Infinite loop */
   for(;;)
   {
 	  osSemaphoreAcquire(Semaphore2Handle, osWaitForever);
 
-	  for (int k=0;k<13;k++)
 
-	  		  {
-	  		    osMessageQueueGet(myQueue01Handle, &(buffer[k]), &size, 100);
-	  		  }
+	      if (history_flag==0)
+	      {
 
-	  Store_Data(buffer,Data_size);
+			  for (int k=0;k<14;k++)
 
-	  osSemaphoreRelease(Semaphore3Handle);
+					  {
+						osMessageQueueGet(myQueue01Handle, &(buffer_queue1[k]), &size, 100);
+					  }
+
+			  Store_Data(buffer_queue1,Data_size);
+
+	      }
+	      else
+	      {
+
+	    	  if(End_History==0)
+	    	     get_history(memory_data,Data_size,&flg_hist);
+
+	    	  for (int j=0;j<14;j++)
+
+	    	  		  {
+	    	  		    osMessageQueuePut(myQueue03Handle, &(memory_data[j]), sizeof(memory_data[j]), 100);
+	    	  		  }
+
+	      }
+
+	      End_History=0;
+	 	  osSemaphoreRelease(Semaphore3Handle);
   }
-  /* USER CODE END StartMem_Store_Data */
+  /* USER CODE END StartMem_Access_Data */
 }
 
 /* USER CODE BEGIN Header_StartBLE_Send_Data */
@@ -423,13 +492,38 @@ void StartBLE_Send_Data(void *argument)
   {
 	      osSemaphoreAcquire(Semaphore3Handle, osWaitForever);
 
-	      for (int l=0;l<13;l++)
+	      if (flg_hist==true)
+	      		{
 
-	  	  		  {
-	  	  		    osMessageQueueGet(myQueue02Handle, &(buffer2[l]), &size, 100);
-	  	  		  }
+	      		    End_History=1;
+	      		    history_flag=0;
+	      		    flg_hist = false;
 
-	  	  send_data(buffer2);
+	      		 }
+
+	      if (history_flag==0)
+	      {
+			  for (int l=0;l<14;l++)
+
+					  {
+						osMessageQueueGet(myQueue02Handle, &(buffer_queue2[l]), &size, 100);
+					  }
+
+			  //send_data(buffer2);
+			  send_data(buffer_queue2,&history_flag,&End_History);
+	      }
+	      else
+	      {
+	    	  for (int l=0;l<14;l++)
+
+	    	  	  {
+	    	  	  	osMessageQueueGet(myQueue03Handle, &(buffer_queue3[l]), &size, 100);
+	    	  	  }
+
+	    	  //send_data(buffer2);
+	    	  send_data(buffer_queue3,&history_flag,&End_History);
+	      }
+
 
 	  	  osSemaphoreRelease(Semaphore0Handle);
   }
@@ -464,6 +558,7 @@ void StartBike_state(void *argument)
               if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == GPIO_PIN_SET)
                		   bouton = 1;
 		  }
+
 	  osSemaphoreRelease(Semaphore1Handle);
 
   }

@@ -144,10 +144,16 @@
  void BSP_QSPI_DeInit(void);
  void BSP_QSPI_Read(uint8_t *pData, uint32_t ReadAddr, uint32_t Size);
  void BSP_QSPI_Write(uint8_t *pData, uint32_t WriteAddr, uint32_t Size);
+
  void Store_Data(uint8_t *pData, int Size);
+
  void BSP_QSPI_Erase_Block(uint32_t BlockAddress);
  void BSP_QSPI_Erase_Sector(uint32_t SectorAddress);
  void BSP_QSPI_Erase_Chip(void);
+ void get_history(uint8_t buff[16], int size,bool *flg);
+ uint32_t hexa_of_epoch(int compteur,int size);
+ int start_of_history(int debut, int fin, uint32_t x,int size);
+ uint32_t Hexadecimal(int nombre);
 
 
 #ifdef __cplusplus

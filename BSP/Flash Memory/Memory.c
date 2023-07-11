@@ -55,14 +55,14 @@ static uint8_t QSPI_ResetMemory(QSPI_HandleTypeDef *hqspi);
 static uint8_t QSPI_DummyCyclesCfg(QSPI_HandleTypeDef *hqspi);
 static uint8_t QSPI_WriteEnable(QSPI_HandleTypeDef *hqspi);
 static uint8_t QSPI_AutoPollingMemReady(QSPI_HandleTypeDef *hqspi, uint32_t Timeout);
-//static uint32_t Hexadecimal(int nombre);
+static uint32_t Hexadecimal(int nombre);
 static bool Est_Vide(uint32_t ADDR, uint32_t Size);
 static bool Mem_pleine(int Size);
 static void inversion_hex(char hex[8], char hexinv[8]);
 static void Write_Data(uint8_t *pData, int Size);
 static void Erase_Subsector(int Size);
-//static uint32_t hexa_of_epoch(int compteur,int size);
-//static int start_of_history(int debut, int fin, uint32_t x,int size);
+static uint32_t hexa_of_epoch(int compteur,int size);
+static int start_of_history(int debut, int fin, uint32_t x,int size);
 static void USART2_UART_Init(void);
 
 
@@ -226,7 +226,7 @@ void BSP_QSPI_Write(uint8_t *pData, uint32_t WriteAddr, uint32_t Size)
  */
 void Store_Data(uint8_t *pData, int Size)
 {
-	//HAL_UART_Transmit_IT(&huart2, (uint8_t*)"incrémenter compteur",20);
+
 	if (store==1)
 	{
 
@@ -255,31 +255,10 @@ void get_history(uint8_t buff[13], int size,bool *flg)
 	if (call_flg == false)
     {
         // recevoir l'intervalle de l'historique
+
 		v= false;
-		//comp=13398;
 		History_Range(&epoch1_value,&epoch2_value);
 
-        	/*  if (rxbuffer[0] == '1')
-        	  {
-        		  memcpy((char*)epoch1, rxbuffer, 10);
-        		 // sprintf(int_epoch1,"%d%d%d%d%d%d%d%d%d%d",epoch1[0],epoch1[1],epoch1[2],epoch1[3],epoch1[4],epoch1[5],epoch1[6],epoch1[7],epoch1[8],epoch1[9]);
-        		 x1=strtol(epoch1, NULL, 10);
-        		  sprintf(hexa_epoch1,"%x",x1);
-                          epoch1_value = strtoul(hexa_epoch1,NULL,16);
-
-        		      memcpy((char*)epoch2, (rxbuffer) + 10, 10);
-        		     // sprintf(int_epoch2,"%d%d%d%d%d%d%d%d%d%d",epoch2[0],epoch2[1],epoch2[2],epoch2[3],epoch2[4],epoch2[5],epoch2[6],epoch2[7],epoch2[8],epoch2[9]);
-        		      x2 = strtol(epoch2, NULL, 10);
-        		      sprintf(hexa_epoch2,"%x",x2);
-                              epoch2_value = strtoul(hexa_epoch2,NULL,16);
-              		   //flag=0;
-        	  }*/
-    	 /* else
-        	  {
-                  HAL_Delay(50);
-        		  huart1.pRxBuffPtr = (uint8_t *)rxbuffer;
-        		  huart1.RxXferCount = sizeof(rxbuffer);
-        	  }*/
 
         // chercher début de l'historique
 
@@ -304,7 +283,7 @@ void get_history(uint8_t buff[13], int size,bool *flg)
             }
         call_flg = true;
         comteur_history = debut;
-        //flg=call_flg;
+
     }
     else
     {
@@ -315,28 +294,22 @@ void get_history(uint8_t buff[13], int size,bool *flg)
 
         BSP_QSPI_Read(buffer,Hexadecimal(comteur_history*size),size);
         Inversion(buffer,buff);
-        //HAL_UART_Transmit(&huart2, (uint8_t*)buff,16,1000);
-        //HAL_UART_Transmit(&huart2, (uint8_t*)"\n",2,100);
+
         HAL_UART_Transmit_IT(&huart2, (uint8_t*)"compteur_history\n\n",20);
-       /* if((comteur_history==compteur_final+1)||((hexa_of_epoch(comteur_history,size) >= epoch2_value)||(comteur_history==comp)))
-        	comteur_history=0;*/
 
-            if ((nv_epoch1_value != start_epoch_value)||(nv_epoch2_value != end_epoch_value))
-            	call_flg=false;
-			if(comteur_history==compteur_final+1)
-							comteur_history=0;
+        if ((nv_epoch1_value != start_epoch_value)||(nv_epoch2_value != end_epoch_value))
+            {call_flg=false;}
+	    if(comteur_history==compteur_final+1)
+			{comteur_history=0;}
 
-			//valeur = hexa_of_epoch(comteur_history,size);
-			//v= valeur >= epoch2_value;
-			if (((hexa_of_epoch(comteur_history,size) >= epoch2_value)&&(!Est_Vide(Hexadecimal(comteur_history*size),size)))||(comteur_history==comp))
+
+	    if (((hexa_of_epoch(comteur_history,size) >= epoch2_value)&&(!Est_Vide(Hexadecimal(comteur_history*size),size)))||(comteur_history==comp))
 			{
 				call_flg=false;
 				v=true;
 				comteur_history=0;
-				//HAL_Delay(2000);
+
 			}
-
-
 
     }
 	*flg=v;
@@ -713,7 +686,7 @@ static void USART2_UART_Init(void)
 /**
  * convert decimal to hexadecimal
  */
-  uint32_t Hexadecimal(int nombre)
+  static uint32_t Hexadecimal(int nombre)
 {
 	uint32_t Adresse;
 	char Hexa[10];
@@ -789,7 +762,7 @@ static void Write_Data(uint8_t *pData, int Size)
 	if (Est_Vide(ADDR,Size)==true)
 		{
 			a=true;
-			//BSP_QSPI_Write(pData, ADDR, Size);
+			BSP_QSPI_Write(pData, ADDR, Size);
 		}
 		else
 		{
@@ -845,7 +818,7 @@ static void Erase_Subsector(int Size)
 
 }
 
- uint32_t hexa_of_epoch(int compteur,int size)
+ static uint32_t hexa_of_epoch(int compteur,int size)
 {
   uint8_t buffer[4];
   BSP_QSPI_Read(buffer,Hexadecimal(compteur*size),4);
@@ -854,7 +827,7 @@ static void Erase_Subsector(int Size)
   hexa_value = strtoul(hexinv,NULL,16);
   return hexa_value;
 }
- int start_of_history(int debut, int fin, uint32_t x,int size)
+ static int start_of_history(int debut, int fin, uint32_t x,int size)
 {
     int milieu;
     if(x < hexa_of_epoch(debut,size))
@@ -891,6 +864,5 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		store=1;
 		comp++;
 	}
-	/*increment=1;
-	comteur_history++;*/
+
 }

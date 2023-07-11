@@ -112,13 +112,13 @@ const osSemaphoreAttr_t Semaphore0_attributes = {
 /* USER CODE BEGIN PV */
 
 DMA_HandleTypeDef hdma_usart1_rx;
-uint8_t GPS_Data[14];
-uint8_t BLE_Data[14];
-uint8_t memory_data[14];
+uint8_t GPS_Data[15];
+uint8_t BLE_Data[15];
+uint8_t memory_data[15];
 int Data_size = 16;
-uint8_t buffer_queue1[14];
-uint8_t buffer_queue2[14];
-uint8_t buffer_queue3[14];
+uint8_t buffer_queue1[15];
+uint8_t buffer_queue2[15];
+uint8_t buffer_queue3[15];
 uint8_t size;
 int bouton=0;
 int Temps_vit_null=0;
@@ -157,7 +157,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU);
   		}
 
-  		//compt++;
   }
 
 /* USER CODE END 0 */
@@ -229,13 +228,13 @@ int main(void)
 
   /* Create the queue(s) */
   /* creation of myQueue01 */
-  myQueue01Handle = osMessageQueueNew (14, sizeof(uint8_t), &myQueue01_attributes);
+  myQueue01Handle = osMessageQueueNew (15, sizeof(uint8_t), &myQueue01_attributes);
 
   /* creation of myQueue02 */
-  myQueue02Handle = osMessageQueueNew (14, sizeof(uint8_t), &myQueue02_attributes);
+  myQueue02Handle = osMessageQueueNew (15, sizeof(uint8_t), &myQueue02_attributes);
 
   /* creation of myQueue03 */
-  myQueue03Handle = osMessageQueueNew (14, sizeof(uint8_t), &myQueue03_attributes);
+  myQueue03Handle = osMessageQueueNew (15, sizeof(uint8_t), &myQueue03_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -415,7 +414,7 @@ void StartGPS_Get_Data(void *argument)
 
 		  Get_Data(GPS_Data, BLE_Data,&Temps_vit_null);
 
-		  for (int j=0;j<14;j++)
+		  for (int j=0;j<15;j++)
 
 			  {
 				osMessageQueuePut(myQueue01Handle, &(GPS_Data[j]), sizeof(GPS_Data[j]), 100);
@@ -448,7 +447,7 @@ void StartMem_Access_Data(void *argument)
 	      if (history_flag==0)
 	      {
 
-			  for (int k=0;k<14;k++)
+			  for (int k=0;k<15;k++)
 
 					  {
 						osMessageQueueGet(myQueue01Handle, &(buffer_queue1[k]), &size, 100);
@@ -463,7 +462,7 @@ void StartMem_Access_Data(void *argument)
 	    	  if(End_History==0)
 	    	     get_history(memory_data,Data_size,&flg_hist);
 
-	    	  for (int j=0;j<14;j++)
+	    	  for (int j=0;j<15;j++)
 
 	    	  		  {
 	    	  		    osMessageQueuePut(myQueue03Handle, &(memory_data[j]), sizeof(memory_data[j]), 100);
@@ -503,24 +502,24 @@ void StartBLE_Send_Data(void *argument)
 
 	      if (history_flag==0)
 	      {
-			  for (int l=0;l<14;l++)
+			  for (int l=0;l<15;l++)
 
 					  {
 						osMessageQueueGet(myQueue02Handle, &(buffer_queue2[l]), &size, 100);
 					  }
 
-			  //send_data(buffer2);
+
 			  send_data(buffer_queue2,&history_flag,&End_History);
 	      }
 	      else
 	      {
-	    	  for (int l=0;l<14;l++)
+	    	  for (int l=0;l<15;l++)
 
 	    	  	  {
 	    	  	  	osMessageQueueGet(myQueue03Handle, &(buffer_queue3[l]), &size, 100);
 	    	  	  }
 
-	    	  //send_data(buffer2);
+
 	    	  send_data(buffer_queue3,&history_flag,&End_History);
 	      }
 

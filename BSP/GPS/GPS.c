@@ -28,7 +28,7 @@ char Ligne_GPRMC[110];
 uint8_t Flag=0;
 static int indice;
 char * p;
-float Temps, Longitude, Latitude, Vitesse;
+float Temps, Longitude, Latitude, Vitesse, dist=0.0;
 int Date, Jour, Mois, Annee, Heures, Minutes, Secondes;
 uint32_t Epoch_Time;
 char ch[6];
@@ -39,18 +39,19 @@ Data_from_GPS mydata;
 int compteur=0;
 int led1,led2,led3,led4,niv;
 
+
+
+
 /* Private functions ----------------------------------------------------------*/
 
-static void Format_data(int Date,float Temps,float Latitude,float Longitude,float Vitesse,uint8_t buffer[14],uint8_t buff[14], int * compteur_vit_null);
+static void Format_data(int Date,float Temps,float Latitude,float Longitude,float Vitesse,uint8_t buffer[15],uint8_t buff[15], int * compteur_vit_null);
 static uint32_t Get_Epoch_Time(int jour,int mois,int annee,int heures,int minutes,int secondes);
-//static void Inversion(uint8_t buffer[13], uint8_t buff[13]);
-//static void USART2_UART_Init(void);
 
 
 
 /* Exported Functions -----------------------------------------------------------------------------*/
 
-void Get_Data(uint8_t buffer[14],uint8_t buff[14], int  * compteur_vit_null)
+void Get_Data(uint8_t buffer[15],uint8_t buff[15], int  * compteur_vit_null)
 {
 
 	if (Flag == 1)
@@ -76,17 +77,15 @@ void Get_Data(uint8_t buffer[14],uint8_t buff[14], int  * compteur_vit_null)
 
 			Ligne_GPRMC[indice]= '\0';
 		  // Extraction de chaque information dans la ligne
-		//  HAL_UART_Transmit(&huart2, (uint8_t*)Ligne_GPRMC, sizeof(Ligne_GPRMC), 100);
 		  sscanf(Ligne_GPRMC,"GGPRMC,%f,A,%f,N,%f,E,%f,,%d",&Temps,&Latitude,&Longitude,&Vitesse,&Date);
 
-        //  HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), 50);
 		  // Format des données
 		  Format_data(Date, Temps, Latitude, Longitude, Vitesse,buffer,buff, compteur_vit_null);
 		  Flag=0;
 
 		}
 	  }
-	//return (uint8_t *)buff;
+
 }
 
 
@@ -105,13 +104,12 @@ void GPS_Init(void)
   huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart4);
 
-  //USART2_UART_Init();
   HAL_UART_Receive_IT(&huart4, (uint8_t*)Rxdata,750);
 }
 
 /* Private Functions --------------------------------------------------------------------------*/
 
-static void Format_data(int Date, float Temps, float Latitude, float Longitude, float Vitesse,uint8_t buffer[14],uint8_t buff[14],int * compteur_vit_null)
+static void Format_data(int Date, float Temps, float Latitude, float Longitude, float Vitesse,uint8_t buffer[15],uint8_t buff[15],int * compteur_vit_null)
 {
 
   // Date  :  ddmmaa ==> dd/mm/aa
@@ -125,7 +123,7 @@ static void Format_data(int Date, float Temps, float Latitude, float Longitude, 
   Minutes = (int)((Temps-(Heures*10000))/100);
   Secondes = (int)(Temps-((Heures*10000)+(Minutes*100)));
 
-  // Timestamp :
+  // Timestamp en secondes :
 
   Epoch_Time = Get_Epoch_Time(Jour,Mois,2000+Annee,Heures,Minutes,Secondes);
 
@@ -140,7 +138,9 @@ static void Format_data(int Date, float Temps, float Latitude, float Longitude, 
   if ((*compteur_vit_null) == 30)
 	  (*compteur_vit_null)=0;
 
-  //compteur_vit_null= compteur;
+  //Distance parcourue en km:
+
+  dist = dist + Vitesse * (1.5/3600);
 
   // Latitude : ddmm.mmmm ==> dd + mm.mmmm/60
 
@@ -160,11 +160,13 @@ static void Format_data(int Date, float Temps, float Latitude, float Longitude, 
 	 .latitude = Latitude,
 	 .longitude= Longitude,
      .speed= Vitesse,
-    // .history_indicator = '1',
+     .Distance = dist,
   };
 
 
   memcpy(buffer, &mydata, sizeof(mydata));
+
+  // niveau de charge de la batterie :
 
   led1 = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_2);
   	  led2 = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_8);
@@ -208,7 +210,7 @@ static uint32_t Get_Epoch_Time(int jour,int mois,int annee,int heures,int minute
 /**
  * la fonction ci-dessous a pour but d'inverser le contenu d'un buffer de la façon suivante : "abcdefghijklp" ==> "dcbahgfelkjip"
  */
-void Inversion(uint8_t buffer[14],uint8_t buff[14])
+void Inversion(uint8_t buffer[15],uint8_t buff[15])
 {
 	int k =0;
 	  for (int i=0; i<=8; i=i+4)
@@ -221,40 +223,16 @@ void Inversion(uint8_t buffer[14],uint8_t buff[14])
 	  }
 
 	  buff[12]=buffer[12];
-	  buff[13]= niv;
+	  buff[13] = buffer[13];
+	  buff[14]= niv;
 }
 
-/**
- * la fonction ci-dessous permet d'initialiser l'usart2 de STLINK pour afficher des messages
- */
-/*static void USART2_UART_Init(void)
-{
 
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  HAL_UART_Init(&huart2);
-
-}*/
 
 /**
  * la fonction ci-dessous est appellé après la réception de chaque donnée du module GPS
  */
-/*void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef * huart)
-{
 
-	 Flag=1;
-     HAL_UART_Receive_DMA(&huart4, (uint8_t*)Rxdata,750);
-
-
-}*/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef * huart)
 {
 

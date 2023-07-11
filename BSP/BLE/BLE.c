@@ -63,8 +63,6 @@ void send_data(uint8_t * send_data_buffer, int *flag,int*end_history)
 
 	if(strcmp((char *)send_data_test_buffer,(char *)send_data_buffer)!=0)
 	    {
-			/*strcat((char*)buffer3,(char*)send_data_buffer);
-			strcat((char*)buffer3,(char*)niv);*/
 		    HAL_UART_Transmit(&huart1, send_data_buffer, 15, 100);
 		    strcpy((char *)send_data_test_buffer,(char *)send_data_buffer);
 	    }
@@ -137,8 +135,6 @@ static void BLE_State_Pin_Init(void)
 void BLE_Init(void)
 {
 	MX_USART1_UART_Init();
-	//MX_DMA_Init();
-	//MX_USART2_UART_Init();
 	BLE_State_Pin_Init();
 	HAL_UART_Receive_DMA(&huart1,(uint8_t *) buffer, 20);
 }
@@ -148,7 +144,7 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
 
 		HAL_UART_Receive_DMA(&huart1, (uint8_t*)buffer,20);
-	    cmp++;
+
 	  if ((buffer[0]=='\001'))
 	  {
 

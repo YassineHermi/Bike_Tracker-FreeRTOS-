@@ -13,7 +13,7 @@
 
 QSPI_HandleTypeDef QSPIHandle;
 UART_HandleTypeDef huart2;
-int compteur_final = 20223;
+int compteur_final = 1048575;
 bool a=false;
 uint8_t store=0;
 uint8_t increment=0;
@@ -33,16 +33,8 @@ uint32_t start_epoch_value;
 uint32_t end_epoch_value;
 uint32_t nv_epoch1_value;
 uint32_t nv_epoch2_value;
-//int x1,x2;
 uint8_t rxbuffer[20];
 uint8_t flag=0;
-/*uint8_t epoch1[10];
-uint8_t epoch2[10];
-int i=0;
-char int_epoch1[10];
-char hexa_epoch1[8];
-char int_epoch2[10];
-char hexa_epoch2[8];*/
 bool call_flg=false;
 bool v= false;
 
@@ -151,8 +143,6 @@ void BSP_QSPI_Read(uint8_t *pData, uint32_t ReadAddr, uint32_t Size)
   /* Reception of the data */
   HAL_QSPI_Receive(&QSPIHandle, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE);
 
-  /* Data is read ==> Flag=0 */
-  //Reset_Flag(ReadAddr);
 
 }
 

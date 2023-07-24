@@ -752,7 +752,7 @@ static void Write_Data(uint8_t *pData, int Size)
 	if (Est_Vide(ADDR,Size)==true)
 		{
 			a=true;
-			BSP_QSPI_Write(pData, ADDR, Size);
+			//BSP_QSPI_Write(pData, ADDR, Size);
 		}
 		else
 		{
